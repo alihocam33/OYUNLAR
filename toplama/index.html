@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Matematik Ormanı Macerası - Alihocam</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&family=Pacifico&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Nunito', sans-serif;
+            background-color: #333;
+            touch-action: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* --- UI KATMANLARI --- */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* HUD */
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 20px;
+            color: white;
+            font-family: 'Fredoka One', cursive;
+            text-shadow: 2px 2px 0 #000;
+            font-size: 20px;
+        }
+
+        .hud-left {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* LOGO STİLLERİ - ESKİ METİN HALİ */
+        .brand-logo-small {
+            font-family: 'Pacifico', cursive;
+            font-size: 28px;
+            color: #FFD700;
+            text-shadow: 2px 2px 0 #d35400;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 15px;
+            border-radius: 15px;
+            width: fit-content;
+            transform: rotate(-3deg);
+            pointer-events: auto; 
+        }
+
+        .level-badge {
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 2px solid white;
+        }
+
+        /* KONTROLLER */
+        .controls {
+            padding: 20px;
+            text-align: center;
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #walkBtn {
+            background: linear-gradient(to bottom, #FFD700, #FFA500);
+            border: 4px solid #fff;
+            border-radius: 50%;
+            width: 110px;
+            height: 110px;
+            font-size: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 0 #c0392b, 0 15px 20px rgba(0,0,0,0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+        }
+
+        #walkBtn:active, #walkBtn.pressed {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 #c0392b, 0 5px 10px rgba(0,0,0,0.3);
+            background: #ffc107;
+        }
+
+        /* SORU PENCERESİ */
+        #question-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            backdrop-filter: blur(8px);
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 6px solid #FFD700;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .question-text {
+            font-family: 'Fredoka One', cursive;
+            font-size: 56px;
+            color: #2c3e50;
+            margin: 20px 0;
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 15px;
+            border-bottom: 5px solid #bdc3c7;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .option-btn {
+            background: #fff;
+            border: 2px solid #ecf0f1;
+            padding: 20px;
+            font-size: 32px;
+            font-family: 'Fredoka One', cursive;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 5px 0 #bdc3c7;
+            color: #34495e;
+        }
+
+        .option-btn:active {
+            transform: translateY(5px);
+            box-shadow: none;
+        }
+
+        .option-btn:hover {
+            background: #f1c40f;
+            border-color: #f39c12;
+            color: white;
+            box-shadow: 0 5px 0 #d35400;
+        }
+
+        .correct-anim {
+            animation: correctPulse 0.5s;
+            background: #2ecc71 !important;
+            border-color: #27ae60 !important;
+            box-shadow: 0 5px 0 #1e8449 !important;
+            color: white !important;
+        }
+
+        .wrong-anim {
+            animation: shake 0.5s;
+            background: #e74c3c !important;
+            border-color: #c0392b !important;
+            box-shadow: 0 5px 0 #922b21 !important;
+            color: white !important;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* GİRİŞ EKRANI */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #2c3e50, #4ca1af);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 200;
+            pointer-events: auto;
+        }
+
+        /* Ana Logo Stili */
+        .main-logo-container {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+        }
+
+        .brand-logo-large {
+            font-family: 'Pacifico', cursive;
+            font-size: 70px;
+            color: #FFD700;
+            text-shadow: 4px 4px 0 #c0392b, 0 0 20px rgba(255, 215, 0, 0.5);
+            display: block;
+            transform: rotate(-5deg);
+        }
+
+        .game-title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 30px;
+            color: #ecf0f1;
+            letter-spacing: 2px;
+            margin-top: -10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .setting-row {
+            margin: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 22px;
+            font-family: 'Nunito', sans-serif;
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        .start-btn {
+            margin-top: 30px;
+            padding: 20px 60px;
+            font-size: 32px;
+            background: #2ecc71;
+            color: white;
+            border: 4px solid white;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: 'Fredoka One', cursive;
+            box-shadow: 0 8px 0 #27ae60, 0 15px 20px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+
+        .start-btn:active {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 #27ae60;
+        }
+
+        /* Seviye Geçiş Ekranı */
+        #transition-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to right, #3498db, #8e44ad);
+            color: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 150;
+            pointer-events: auto;
+            text-align: center;
+        }
+
+        select, input {
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            font-size: 18px;
+            font-family: 'Nunito', sans-serif;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .tutorial-text {
+            position: absolute;
+            bottom: 150px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-family: 'Fredoka One';
+            font-size: 24px;
+            text-shadow: 2px 2px 4px black;
+            animation: pulse 1.5s infinite;
+            pointer-events: none;
+        }
+        @keyframes pulse { 0% { opacity: 0.7; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0.7; transform: scale(0.95); } }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div class="hud">
+            <div class="hud-left">
+                <!-- LOGO - SADECE YAZI -->
+                <div class="brand-logo-small">Alihocam 🎓</div>
+                <div class="level-badge" id="levelDisplay">Seviye 1</div>
+            </div>
+            <div class="level-badge">⭐ Puan: <span id="scoreDisplay">0</span></div>
+        </div>
+        
+        <div class="tutorial-text" id="tutorialText">Gitmek için basılı tut! 👉</div>
+
+        <div class="controls">
+            <div id="walkBtn" ontouchstart="startWalk()" ontouchend="stopWalk()" onmousedown="startWalk()" onmouseup="stopWalk()" onmouseleave="stopWalk()">
+                👣
+            </div>
+        </div>
+    </div>
+
+    <!-- SORU MODALI -->
+    <div id="question-modal">
+        <div class="modal-content">
+            <div style="font-family:'Pacifico'; color:#f1c40f; font-size:24px; margin-bottom:-10px;">
+                Alihocam soruyor:
+            </div>
+            <h2 style="margin:10px 0; color:#555; font-family:'Fredoka One';">Engeli Kaldır!</h2>
+            <div class="question-text" id="q-text">2 + 2 = ?</div>
+            <div class="options-grid" id="q-options"></div>
+        </div>
+    </div>
+
+    <!-- GİRİŞ EKRANI -->
+    <div id="start-screen">
+        <div class="main-logo-container">
+            <!-- LOGO - BÜYÜK YAZI -->
+            <span class="brand-logo-large">Alihocam 🎓</span>
+            <div class="game-title">MATEMATİK ORMANI</div>
+        </div>
+        
+        <div class="setting-row">
+            <label>Sınıf Seviyesi:</label>
+            <select id="gradeSelect" onchange="updateSettings()">
+                <option value="1">1. Sınıf</option>
+                <option value="2">2. Sınıf</option>
+                <option value="3">3. Sınıf</option>
+                <option value="4">4. Sınıf</option>
+            </select>
+        </div>
+
+        <div class="setting-row">
+            <label>1. Sayı Basamak:</label>
+            <input type="number" id="d1Input" value="1" min="1" max="4" style="width: 60px;">
+        </div>
+        <div class="setting-row">
+            <label>2. Sayı Basamak:</label>
+            <input type="number" id="d2Input" value="1" min="1" max="4" style="width: 60px;">
+        </div>
+
+        <button class="start-btn" onclick="startGame()">BAŞLA</button>
+    </div>
+
+    <!-- GEÇİŞ EKRANI -->
+    <div id="transition-screen">
+        <div class="brand-logo-large" style="font-size:50px; margin-bottom:20px;">Alihocam 🎓</div>
+        <h1 style="font-family: 'Fredoka One'; font-size: 60px;">Harika! 🎉</h1>
+        <p style="font-size: 24px;">Yeni macera yükleniyor...</p>
+        <div style="font-size: 80px; margin-top:20px;">🌲🚀🏰</div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let width, height;
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    let gameState = 'START';
+    let level = 1;
+    let score = 0;
+    let d1 = 1, d2 = 1;
+    
+    let player = {
+        x: 100, 
+        worldX: 0,
+        y: 0,
+        width: 80, 
+        height: 100,
+        speed: 5,
+        frame: 0,
+        isWalking: false,
+        emoji: "🤠" 
+    };
+
+    let cameraX = 0;
+    const QUESTION_INTERVAL = 800;
+    const QUESTIONS_PER_LEVEL = 5;
+    let nextQuestionX = QUESTION_INTERVAL;
+    let questionsSolvedInLevel = 0;
+    let scenery = [];
+
+    // --- MATEMATİK FONKSİYONLARI ---
+    function randWithDigits(digits) {
+        if (digits === 1) return Math.floor(Math.random() * 9) + 1;
+        const min = Math.pow(10, digits - 1);
+        const max = Math.pow(10, digits) - 1;
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function getDigits(num, length) {
+        return num.toString().padStart(length, '0').split('').map(Number);
+    }
+
+    function generateQuestion(lvl) {
+        let a, b, op, answer, text;
+        let attempts = 0;
+        
+        while(attempts < 100) {
+            attempts++;
+            a = randWithDigits(d1);
+            b = randWithDigits(d2);
+            const len = Math.max(d1, d2);
+            const A = getDigits(a, len);
+            const B = getDigits(b, len);
+            let isValid = false;
+
+            switch(lvl) {
+                case 1: op = '+'; isValid = A.every((val, i) => val + B[i] < 10); break;
+                case 2: op = '-'; if (a < b) [a, b] = [b, a]; const A2 = getDigits(a, len), B2 = getDigits(b, len); isValid = A2.every((val, i) => val >= B2[i]); break;
+                case 3: if (Math.random() < 0.5) return generateQuestion(1); else return generateQuestion(2);
+                case 4: op = '+'; isValid = A.some((val, i) => val + B[i] >= 10); break;
+                case 5: op = '-'; if (a < b) [a, b] = [b, a]; const strA = a.toString(), strB = b.toString().padStart(strA.length, '0'); for(let i=0; i<strA.length; i++) { if(parseInt(strA[i]) < parseInt(strB[i])) { isValid = true; break; } } break;
+                case 6: if (Math.random() < 0.5) return generateQuestion(4); else return generateQuestion(5);
+                default: isValid = true;
+            }
+
+            if(isValid) {
+                answer = op === '+' ? a + b : a - b;
+                text = `${a} ${op} ${b} = ?`;
+                let distractors = new Set([answer]);
+                while(distractors.size < 3) {
+                    let offset = Math.floor(Math.random() * 10) + 1;
+                    if(Math.random() > 0.5) offset *= -1;
+                    const val = answer + offset;
+                    if(val >= 0) distractors.add(val);
+                }
+                return { text, answer, options: Array.from(distractors).sort(() => Math.random() - 0.5) };
+            }
+        }
+        return { text: "1 + 1 = ?", answer: 2, options: [1,2,3] };
+    }
+
+    // --- SEVİYE AYARLARI ---
+    const levels = [
+        { name: "Güneşli Orman", sky: "#87CEEB", ground: "#27ae60", tree: "#2ecc71", obstacle: "🦉" },
+        { name: "Taş Köprü", sky: "#F0E68C", ground: "#7f8c8d", tree: "#e67e22", obstacle: "🐲" },
+        { name: "Gizemli Mağara", sky: "#2c3e50", ground: "#34495e", tree: "#95a5a6", obstacle: "🦇" },
+        { name: "Karlı Dağ", sky: "#74b9ff", ground: "#dfe6e9", tree: "#636e72", obstacle: "🐺" },
+        { name: "Volkan Yolu", sky: "#ff7675", ground: "#c0392b", tree: "#2d3436", obstacle: "👹" },
+        { name: "Hazine Odası", sky: "#a29bfe", ground: "#f1c40f", tree: "#e17055", obstacle: "💂" }
+    ];
+
+    function initLevel() {
+        player.worldX = 0;
+        cameraX = 0;
+        questionsSolvedInLevel = 0;
+        nextQuestionX = QUESTION_INTERVAL;
+        
+        scenery = [];
+        for(let i=0; i<50; i++) {
+            scenery.push({
+                x: Math.random() * (QUESTION_INTERVAL * QUESTIONS_PER_LEVEL + 1000),
+                y: height - 120 - Math.random() * 50,
+                scale: 0.6 + Math.random() * 1.2,
+                type: Math.random() > 0.8 ? 'rock' : 'tree'
+            });
+        }
+
+        const cfg = levels[(level-1)%6];
+        document.getElementById('levelDisplay').innerText = `Seviye ${level}: ${cfg.name}`;
+        gameState = 'WALKING_IDLE';
+    }
+
+    function update() {
+        if (gameState === 'WALKING_ACTIVE') {
+            player.worldX += player.speed;
+            cameraX = player.worldX - 100;
+            player.frame += 0.2;
+
+            if (player.worldX >= nextQuestionX) {
+                player.worldX = nextQuestionX;
+                stopWalk();
+                gameState = 'STOPPED';
+                openQuestion();
+            }
+        }
+    }
+
+    function draw() {
+        const cfg = levels[(level-1)%6];
+
+        // 1. Arkaplan
+        ctx.fillStyle = cfg.sky;
+        ctx.fillRect(0, 0, width, height);
+
+        // Güneş/Ay
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.beginPath();
+        ctx.arc(width - 100 - (cameraX * 0.02), 100, 70, 0, Math.PI*2);
+        ctx.fill();
+
+        // 2. Dağlar
+        ctx.fillStyle = "rgba(0,0,0,0.1)";
+        for(let i=0; i<width/150 + 2; i++) {
+            let mtX = (i * 300) - (cameraX * 0.1) % 300;
+            ctx.beginPath();
+            ctx.moveTo(mtX, height - 100);
+            ctx.lineTo(mtX + 150, height - 400);
+            ctx.lineTo(mtX + 300, height - 100);
+            ctx.fill();
+        }
+
+        // 3. Zemin
+        ctx.fillStyle = cfg.ground;
+        ctx.fillRect(0, height - 120, width, 120);
+        ctx.fillStyle = "rgba(255,255,255,0.1)"; // Zemin üstü parlaklık
+        ctx.fillRect(0, height - 120, width, 10);
+
+        // 4. Dekorasyon
+        scenery.forEach(item => {
+            let screenX = item.x - cameraX;
+            if (screenX > -150 && screenX < width + 150) {
+                if(item.type === 'tree') drawTree(screenX, height - 120, item.scale, cfg.tree);
+                else drawRock(screenX, height - 120, item.scale);
+            }
+        });
+
+        // 5. Engel (BAYKUŞ vb.) - ÇOK PARLAK VE BELİRGİN
+        let obstacleScreenX = nextQuestionX - cameraX;
+        if (obstacleScreenX > -200 && obstacleScreenX < width + 200) {
+            ctx.save();
+            
+            let floatY = Math.sin(Date.now() / 300) * 15;
+            let centerX = obstacleScreenX + 40;
+            let centerY = height - 180 + floatY;
+
+            // Arkaya Parlak Daire (Halo)
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - 20, 90, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255, 255, 255, 0.6)"; // Yarı saydam beyaz
+            ctx.shadowColor = "#FFD700";
+            ctx.shadowBlur = 50;
+            ctx.fill();
+            
+            // Emoji Çizimi
+            ctx.font = "140px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            
+            // Beyaz Dış Kontur (Outline)
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = "white";
+            ctx.shadowBlur = 0; // Stroke net olsun
+            ctx.strokeText(cfg.obstacle, centerX, centerY);
+            
+            // İç Dolgu
+            ctx.fillText(cfg.obstacle, centerX, centerY);
+            
+            ctx.restore();
+
+            if (gameState === 'STOPPED' || gameState === 'QUESTION') {
+                 ctx.fillStyle = "white";
+                 ctx.font = "bold 24px 'Fredoka One'";
+                 ctx.strokeStyle = "black";
+                 ctx.lineWidth = 4;
+                 ctx.strokeText("SORU VAR!", centerX, height - 310 + floatY);
+                 ctx.fillText("SORU VAR!", centerX, height - 310 + floatY);
+            }
+        }
+
+        // 6. Oyuncu - ÇOK PARLAK VE BELİRGİN
+        let hop = (gameState === 'WALKING_ACTIVE') ? Math.abs(Math.sin(player.frame)) * 15 : 0;
+        
+        ctx.save();
+        
+        let playerCenterX = player.x + 40; // Emoji ortalaması için
+        let playerCenterY = height - 160 - hop;
+
+        // Arkaya Parlak Daire (Spotlight)
+        ctx.beginPath();
+        ctx.arc(playerCenterX, playerCenterY, 70, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.shadowColor = "white";
+        ctx.shadowBlur = 30;
+        ctx.fill();
+
+        // Karakter
+        ctx.font = "110px Arial"; 
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        
+        // Kontur
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = "white";
+        ctx.shadowBlur = 0;
+        ctx.strokeText(player.emoji, playerCenterX, playerCenterY);
+        
+        ctx.fillText(player.emoji, playerCenterX, playerCenterY);
+        
+        ctx.restore();
+
+        requestAnimationFrame(loop);
+    }
+
+    function loop() {
+        update();
+        draw();
+    }
+
+    function drawTree(x, y, scale, color) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        
+        ctx.fillStyle = "#5d4037"; // Gövde
+        ctx.fillRect(-15, -50, 30, 50);
+        
+        ctx.fillStyle = color; // Yapraklar
+        ctx.beginPath();
+        ctx.arc(0, -70, 40, 0, Math.PI*2); // Yuvarlak ağaçlar daha sevimli
+        ctx.fill();
+        
+        // Ağaç detayı
+        ctx.fillStyle = "rgba(255,255,255,0.2)";
+        ctx.beginPath();
+        ctx.arc(-10, -80, 10, 0, Math.PI*2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
+
+    function drawRock(x, y, scale) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        ctx.fillStyle = "#7f8c8d";
+        ctx.beginPath();
+        ctx.arc(0, -10, 25, Math.PI, 0);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // --- KONTROLLER ---
+    function startWalk() {
+        if (gameState === 'WALKING_IDLE' || gameState === 'WALKING_ACTIVE') {
+            gameState = 'WALKING_ACTIVE';
+            document.getElementById('walkBtn').classList.add('pressed');
+            document.getElementById('tutorialText').style.display = 'none';
+        }
+    }
+
+    function stopWalk() {
+        if (gameState === 'WALKING_ACTIVE') {
+            gameState = 'WALKING_IDLE';
+            document.getElementById('walkBtn').classList.remove('pressed');
+        }
+    }
+
+    window.addEventListener('keydown', (e) => { if(e.code === 'ArrowRight' || e.code === 'Space') startWalk(); });
+    window.addEventListener('keyup', (e) => { if(e.code === 'ArrowRight' || e.code === 'Space') stopWalk(); });
+
+    // --- OYUN AKIŞI ---
+    function openQuestion() {
+        gameState = 'QUESTION';
+        const q = generateQuestion(level);
+        document.getElementById('q-text').innerText = q.text;
+        
+        const grid = document.getElementById('q-options');
+        grid.innerHTML = '';
+        
+        q.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt, q.answer, btn);
+            grid.appendChild(btn);
+        });
+
+        document.getElementById('question-modal').style.display = 'flex';
+    }
+
+    function checkAnswer(selected, correct, btnElement) {
+        if (selected === correct) {
+            btnElement.classList.add('correct-anim');
+            score += 10;
+            document.getElementById('scoreDisplay').innerText = score;
+            setTimeout(() => { closeQuestion(true); }, 800);
+        } else {
+            btnElement.classList.add('wrong-anim');
+            setTimeout(() => btnElement.classList.remove('wrong-anim'), 500);
+        }
+    }
+
+    function closeQuestion(success) {
+        document.getElementById('question-modal').style.display = 'none';
+        if (success) {
+            questionsSolvedInLevel++;
+            if (questionsSolvedInLevel >= QUESTIONS_PER_LEVEL) {
+                levelComplete();
+            } else {
+                nextQuestionX += QUESTION_INTERVAL;
+                gameState = 'WALKING_IDLE';
+            }
+        }
+    }
+
+    function levelComplete() {
+        gameState = 'TRANSITION';
+        const transScreen = document.getElementById('transition-screen');
+        transScreen.style.display = 'flex';
+        setTimeout(() => {
+            level++;
+            initLevel();
+            transScreen.style.display = 'none';
+        }, 3000);
+    }
+
+    function updateSettings() {
+        const g = parseInt(document.getElementById('gradeSelect').value);
+        if(g===1) { d1=1; d2=1; }
+        else if(g===2) { d1=2; d2=1; }
+        else if(g===3) { d1=3; d2=2; }
+        else { d1=4; d2=3; }
+        document.getElementById('d1Input').value = d1;
+        document.getElementById('d2Input').value = d2;
+    }
+
+    function startGame() {
+        d1 = parseInt(document.getElementById('d1Input').value);
+        d2 = parseInt(document.getElementById('d2Input').value);
+        document.getElementById('start-screen').style.display = 'none';
+        player.y = height - 100;
+        
+        const avatars = ["🤠", "👩‍🚀", "🧙‍♂️", "🕵️‍♀️", "🦸‍♂️", "🦁", "🤖"];
+        player.emoji = avatars[Math.floor(Math.random() * avatars.length)];
+
+        initLevel();
+        loop();
+    }
+
+</script>
+</body>
+</html>
