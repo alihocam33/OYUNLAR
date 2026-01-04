@@ -1,1 +1,603 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alihocam Paragrafmatik V5</title>
+    
+    <!-- React ve ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel (JSX'i tarayıcıda çalıştırmak için) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome (İkonlar için) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Özel Animasyonlar -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+        
+        body { font-family: 'Nunito', sans-serif; }
+        
+        .animate-spin-slow { animation: spin 8s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+
+        /* Sözlük Baloncuğu Animasyonu */
+        .tooltip-enter { animation: tooltipPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes tooltipPop {
+            0% { opacity: 0; transform: translate(-50%, 10px) scale(0.9); }
+            100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- GELİŞMİŞ SÖZLÜK ---
+        // Kelimelerin köklerini veya yaygın hallerini içerir.
+        const GLOBAL_DICTIONARY = {
+            "ve": "İki kelimeyi veya cümleyi bağlar.",
+            "bir": "Tek bir tane, sayı.",
+            "ile": "Birlikte, beraber.",
+            "çok": "Miktarı fazla olan.",
+            "az": "Miktarı eksik olan.",
+            "git": "Bir yerden ayrılmak.",
+            "gel": "Bir yere ulaşmak.",
+            "de": "Söylemek, konuşmak.",
+            "koş": "Hızlı adımlarla ilerlemek.",
+            "oyun": "Eğlenmek için yapılan hareket.",
+            "arkadaş": "Sevilen dost.",
+            "okul": "Eğitim ve öğretim yeri.",
+            "kırmızı": "Kan rengi, al.",
+            "mavi": "Gökyüzü ve deniz rengi.",
+            "sabah": "Günün ilk saatleri.",
+            "top": "Oyun oynamaya yarayan yuvarlak nesne.",
+            "kedi": "Miyavlayan evcil hayvan.",
+            "köpek": "Havlayan sadık hayvan.",
+            "ağaç": "Gövdesi odun olan büyük bitki.",
+            "su": "Hayat kaynağı sıvı.",
+            "yemek": "Karın doyuran yiyecek.",
+            "bahçe": "Çiçekli ve ağaçlı alan.",
+            "süt": "İnekten sağılan beyaz içecek.",
+            "bal": "Arıların yaptığı tatlı.",
+            "ayı": "Kış uykusuna yatan büyük hayvan.",
+            "elma": "Kırmızı veya yeşil meyve.",
+            "kalem": "Yazı yazma aracı.",
+            "silgi": "Yazıyı silme aracı.",
+            "çanta": "Eşya taşıma kabı.",
+            "öğretmen": "Bilgi öğreten kişi.",
+            "bayram": "Milli veya dini kutlama günü.",
+            "kar": "Beyaz ve soğuk yağış.",
+            "kış": "En soğuk mevsim.",
+            "yaz": "En sıcak mevsim.",
+            "güneş": "Dünyayı ısıtan yıldız.",
+            "çiftçi": "Toprağı ekip biçen kişi.",
+            "karınca": "Çok çalışkan küçük böcek.",
+            "doğa": "Tabiat, çevre.",
+            "trafik": "Araçların yoldaki hareketi.",
+            "kitap": "Okumak için yazılı eser.",
+            "tilki": "Kurnazlığıyla bilinen hayvan.",
+            "karga": "Siyah renkli kuş.",
+            "yalan": "Doğru olmayan söz.",
+            "aslan": "Ormanların kralı.",
+            "tavşan": "Uzun kulaklı hızlı hayvan.",
+            "kaplumbağa": "Sırtında evi olan yavaş hayvan.",
+            "deniz": "Büyük tuzlu su kütlesi.",
+            "hazine": "Saklı duran değerli eşyalar.",
+            "geçmiş": "Eskide kalan zaman.",
+            "kazan": "Büyük yemek pişirme kabı.",
+            "keloğlan": "Masallardaki zeki ve kel kahraman.",
+            "hacivat": "Gölge oyunundaki bilgili karakter.",
+            "karagöz": "Gölge oyunundaki halk adamı.",
+            "dilek": "İstek, arzu.",
+            "efsane": "Halk hikayesi.",
+            "bilge": "Çok bilgili, akıllı kişi.",
+            "inat": "Bir konuda direnme.",
+            "köprü": "İki yakayı bağlayan yapı.",
+            "gezegen": "Güneş etrafında dönen gök cismi.",
+            "dünya": "Yaşadığımız gezegen.",
+            "uzay": "Dünya dışındaki sonsuz boşluk.",
+            "mikrop": "Hastalık yapan gözle görülmez canlı.",
+            "deprem": "Yer kabuğunun sarsılması.",
+            "yapay": "İnsan yapımı, doğal olmayan.",
+            "zeka": "Akıl, düşünme yeteneği.",
+            "teknoloji": "Bilgiyi sanayide ve hayatı kolaylaştırmada kullanma.",
+            "bilgisayar": "Bilgi işlemeye yarayan elektronik cihaz.",
+            "insan": "Düşünen canlı, beşer.",
+            "mars": "Güneş sistemindeki kızıl gezegen.",
+            "genetik": "Kalıtım, soya çekim bilimi.",
+            "dna": "Hücredeki genetik şifre.",
+            "satranç": "İki kişiyle oynanan zeka oyunu.",
+            "resim": "Varlıkların çizgi ve renklerle kağıda dökülmesi.",
+            "soru": "Cevap istenen söz.",
+            "cevap": "Soruya verilen karşılık.",
+            "hayat": "Yaşam.",
+            "kolay": "Zor olmayan.",
+            "zor": "Güç olan.",
+            "mutlu": "Sevinçli.",
+            "üzgün": "Kederli.",
+            "komşu": "Yan evde oturan kişi.",
+            "ödünç": "Geri verilmek üzere alınan.",
+            "tencere": "Yemek pişirme kabı.",
+            "köy": "Şehirden küçük yerleşim yeri.",
+            "dev": "Masallardaki çok büyük yaratık.",
+            "dağ": "Yüksek yer şekli.",
+            "hikaye": "Olay anlatan yazı.",
+            "meşhur": "Ünlü, tanınmış.",
+            "dil": "Konuşma organı veya lisan.",
+            "yol": "Gidilen yer, geçit.",
+            "sistem": "Düzen.",
+            "bitki": "Toprakta yetişen canlı.",
+            "besin": "Gıda.",
+            "vücut": "Beden.",
+            "sağlık": "Vücudun iyi olma durumu.",
+            "buzul": "Büyük buz kütlesi.",
+            "çevre": "Etraf, ortam.",
+            "enerji": "İş yapabilme gücü.",
+            "sıfır": "Başlangıç noktası veya sayı.",
+            "tapınak": "İbadet edilen yer.",
+            "şehir": "Büyük yerleşim yeri.",
+            "kod": "Şifre.",
+            "göz": "Görme organı.",
+            "renk": "Işığın cisimlere çarpmasıyla oluşan görüntü.",
+            "boy": "Uzunluk.",
+            "herkes": "Bütün insanlar.",
+            "farklı": "Başka, değişik."
+        };
+
+        // --- VERİ HAVUZU ---
+        const STORIES = {
+            1: { // 1. SINIF
+                easy: [
+                    { id: 111, icon: "fa-futbol", title: "Ali ve Top", content: "Ali bahçeye çıktı. Arkadaşı Can'ı gördü. Ali'nin elinde kırmızı bir top vardı. Can, 'Haydi top oynayalım' dedi. Birlikte neşeyle koştular.", questions: [{ type: "mc", text: "Ali kiminle karşılaştı?", options: ["Annesiyle", "Can ile", "Kedisiyle"], answer: "Can ile" }, { type: "mc", text: "Ali'nin elinde ne vardı?", options: ["Elma", "Kitap", "Top"], answer: "Top" }, { type: "mc", text: "Nasıl koştular?", options: ["Kızgın", "Ağlayarak", "Neşeyle"], answer: "Neşeyle" }, { type: "match", text: "Eşleştirme:", pairs: [{q: "Ali'nin elindeki", a: "Top"}, {q: "Topun rengi", a: "Kırmızı"}] }, { type: "match", text: "Kişiler:", pairs: [{q: "Arkadaş", a: "Can"}, {q: "Çocuk", a: "Ali"}] }, { type: "dnd", text: "Birlikte _____ koştular.", options: ["kızgın", "neşeyle", "uyuyarak"], answer: "neşeyle" }, { type: "dnd", text: "Ali _____ çıktı.", options: ["okula", "bahçeye", "çatıya"], answer: "bahçeye" }] },
+                    { id: 112, icon: "fa-cat", title: "Minik Kedi", content: "Minik kedi çok acıkmıştı. Mutfağa gitti. Orada bir kap süt buldu. Sütü içince karnı doydu ve mırıldandı.", questions: [{ type: "mc", text: "Kedi ne buldu?", options: ["Su", "Süt", "Mama"], answer: "Süt" }, { type: "mc", text: "Kedi nereye gitti?", options: ["Bahçeye", "Mutfağa", "Salona"], answer: "Mutfağa" }, { type: "mc", text: "Sütü içince ne yaptı?", options: ["Ağladı", "Uyudu", "Mırıldandı"], answer: "Mırıldandı" }, { type: "match", text: "Sıralama:", pairs: [{q: "1. Olay", a: "Acıktı"}, {q: "2. Olay", a: "Süt içti"}] }, { type: "match", text: "Nesneler:", pairs: [{q: "İçecek", a: "Süt"}, {q: "Yer", a: "Mutfak"}] }, { type: "dnd", text: "Kedi çok _____.", options: ["acıkmıştı", "toktu", "uykulu"], answer: "acıkmıştı" }, { type: "dnd", text: "Orada bir kap _____ buldu.", options: ["su", "süt", "yemek"], answer: "süt" }] }
+                ],
+                medium: [
+                    { id: 121, icon: "fa-school", title: "Okul Heyecanı", content: "Bugün okulun ilk günü. Ela çantasını hazırladı. Kalem ve silgisini koydu. Öğretmenini görünce gülümsedi.", questions: [{ type: "mc", text: "Ela nereye gitti?", options: ["Parka", "Okula", "Pazara"], answer: "Okula" }, { type: "mc", text: "Çantasına ne koydu?", options: ["Oyuncak", "Kalem", "Elma"], answer: "Kalem" }, { type: "mc", text: "Öğretmeni görünce ne yaptı?", options: ["Ağladı", "Kaçtı", "Gülümsedi"], answer: "Gülümsedi" }, { type: "match", text: "Araçlar:", pairs: [{q: "Yazmak için", a: "Kalem"}, {q: "Silmek için", a: "Silgi"}] }, { type: "match", text: "Kişiler:", pairs: [{q: "Öğrenci", a: "Ela"}, {q: "Büyük", a: "Öğretmen"}] }, { type: "dnd", text: "Öğretmenini görünce _____.", options: ["korktu", "gülümsedi", "bağırdı"], answer: "gülümsedi" }, { type: "dnd", text: "Bugün okulun _____ günü.", options: ["son", "tatil", "ilk"], answer: "ilk" }] }
+                ],
+                hard: [
+                    { id: 131, icon: "fa-snowflake", title: "Kış Geldi", content: "Hava soğudu, lapa lapa kar yağdı. Çocuklar kardan adam yaptılar. Burnuna havuç, gözüne kömür taktılar.", questions: [{ type: "mc", text: "Hava nasıl oldu?", options: ["Sıcak", "Soğuk", "Ilık"], answer: "Soğuk" }, { type: "mc", text: "Burnuna ne taktılar?", options: ["Havuç", "Kömür", "Salatalık"], answer: "Havuç" }, { type: "mc", text: "Gözüne ne taktılar?", options: ["Zeytin", "Kömür", "Taş"], answer: "Kömür" }, { type: "match", text: "Kış Eşyaları:", pairs: [{q: "Yağış", a: "Kar"}, {q: "Sebze", a: "Havuç"}] }, { type: "match", text: "Eylemler:", pairs: [{q: "Hava", a: "Soğudu"}, {q: "Kar", a: "Yağdı"}] }, { type: "dnd", text: "Hava _____.", options: ["ısındı", "soğudu", "karardı"], answer: "soğudu" }, { type: "dnd", text: "Çocuklar _____ adam yaptı.", options: ["çamur", "demir", "kardan"], answer: "kardan" }] }
+                ]
+            },
+            2: { // 2. SINIF
+                easy: [
+                    { id: 211, icon: "fa-wallet", title: "Dürüst Çocuk", content: "Ahmet bahçede cüzdan buldu. Sahibine verdi. Sahibi ona teşekkür etti. Ahmet çok mutlu oldu.", questions: [{ type: "mc", text: "Ahmet ne buldu?", options: ["Para", "Cüzdan", "Anahtar"], answer: "Cüzdan" }, { type: "mc", text: "Cüzdanı kime verdi?", options: ["Öğretmene", "Polise", "Sahibine"], answer: "Sahibine" }, { type: "mc", text: "Sahibi ne yaptı?", options: ["Kızdı", "Teşekkür etti", "Gitti"], answer: "Teşekkür etti" }, { type: "match", text: "Olay Örgüsü:", pairs: [{q: "Bulunan", a: "Cüzdan"}, {q: "Verilen", a: "Sahibi"}] }, { type: "match", text: "Duygular:", pairs: [{q: "Ahmet", a: "Dürüst"}, {q: "Sonuç", a: "Mutlu"}] }, { type: "dnd", text: "Ahmet _____ bir çocuk.", options: ["dürüst", "yaramaz", "tembel"], answer: "dürüst" }, { type: "dnd", text: "Ahmet bahçede _____ buldu.", options: ["top", "cüzdan", "kitap"], answer: "cüzdan" }] }
+                ],
+                medium: [
+                    { id: 221, icon: "fa-bug", title: "Ağustos Böceği", content: "Karınca bütün yaz çalıştı. Ağustos böceği ise saz çalıp şarkı söyledi. Kış gelince böcek aç kaldı, karıncadan yardım istedi.", questions: [{ type: "mc", text: "Kim bütün yaz çalıştı?", options: ["Ağustos Böceği", "Karınca", "Arı"], answer: "Karınca" }, { type: "mc", text: "Böcek yazın ne yaptı?", options: ["Uyudu", "Saz çaldı", "Çalıştı"], answer: "Saz çaldı" }, { type: "mc", text: "Kışın böcek ne oldu?", options: ["Zengin oldu", "Aç kaldı", "Mutlu oldu"], answer: "Aç kaldı" }, { type: "match", text: "Karakterler:", pairs: [{q: "Çalışkan", a: "Karınca"}, {q: "Tembel", a: "Böcek"}] }, { type: "match", text: "Zaman:", pairs: [{q: "Çalışma", a: "Yaz"}, {q: "Açlık", a: "Kış"}] }, { type: "dnd", text: "Kışın böcek _____ kaldı.", options: ["tok", "aç", "sıcak"], answer: "aç" }, { type: "dnd", text: "Karınca bütün _____ çalıştı.", options: ["gece", "kış", "yaz"], answer: "yaz" }] }
+                ],
+                hard: [
+                    { id: 231, icon: "fa-hand-holding-heart", title: "Paylaşmak Güzeldir", content: "Ali'nin iki sandviçi vardı. Arkadaşı Cem'in yemeği yoktu. Ali birini Cem'e verdi. Paylaşmak dostluğu pekiştirir.", questions: [{ type: "mc", text: "Ali'nin kaç sandviçi vardı?", options: ["Bir", "İki", "Üç"], answer: "İki" }, { type: "mc", text: "Cem'in neyi yoktu?", options: ["Suyu", "Yemeği", "Çantası"], answer: "Yemeği" }, { type: "mc", text: "Hikayenin ana fikri?", options: ["Çok yemek", "Paylaşmak", "Oynamak"], answer: "Paylaşmak" }, { type: "match", text: "Değerler:", pairs: [{q: "Yemek", a: "Sandviç"}, {q: "Davranış", a: "Paylaşmak"}] }, { type: "match", text: "Kişiler:", pairs: [{q: "Veren", a: "Ali"}, {q: "Alan", a: "Cem"}] }, { type: "dnd", text: "Paylaşmak _____ artırır.", options: ["dostluğu", "kavgayı", "korkuyu"], answer: "dostluğu" }, { type: "dnd", text: "Ali birini _____ verdi.", options: ["kendine", "Cem'e", "çöpe"], answer: "Cem'e" }] }
+                ]
+            },
+            3: { // 3. SINIF
+                easy: [
+                    { id: 311, icon: "fa-utensils", title: "Kazan Doğurdu", content: "Nasreddin Hoca komşusundan kazan ödünç aldı. Geri verirken içine küçük bir tencere koydu. 'Kazan doğurdu' dedi. Komşusu buna çok sevindi.", questions: [{ type: "mc", text: "Hoca ne ödünç aldı?", options: ["Tencere", "Kazan", "Tava"], answer: "Kazan" }, { type: "mc", text: "İçine ne koydu?", options: ["Altın", "Yemek", "Tencere"], answer: "Tencere" }, { type: "mc", text: "Komşusu ne hissetti?", options: ["Kızdı", "Sevindi", "Ağladı"], answer: "Sevindi" }, { type: "match", text: "Nesneler:", pairs: [{q: "Büyük", a: "Kazan"}, {q: "Küçük", a: "Tencere"}] }, { type: "match", text: "Olay:", pairs: [{q: "Hoca", a: "Doğurdu dedi"}, {q: "Komşu", a: "İnandı"}] }, { type: "dnd", text: "Kazan _____ dedi.", options: ["kaçtı", "öldü", "doğurdu"], answer: "doğurdu" }, { type: "dnd", text: "İçine küçük bir _____ koydu.", options: ["taş", "tencere", "kaşık"], answer: "tencere" }] }
+                ],
+                medium: [
+                    { id: 321, icon: "fa-user", title: "Keloğlan", content: "Keloğlan köyün en zeki çocuğuydu. Bir gün karşısına kocaman bir dev çıktı. Keloğlan aklını kullanarak devi kandırdı ve köyü kurtardı.", questions: [{ type: "mc", text: "Keloğlan'ın özelliği ne?", options: ["Güçlü", "Zeki", "Zengin"], answer: "Zeki" }, { type: "mc", text: "Karşısına kim çıktı?", options: ["Aslan", "Dev", "Cadı"], answer: "Dev" }, { type: "mc", text: "Devi nasıl yendi?", options: ["Kılıçla", "Kaçarak", "Aklıyla"], answer: "Aklıyla" }, { type: "match", text: "Zıtlıklar:", pairs: [{q: "Keloğlan", a: "Küçük"}, {q: "Dev", a: "Büyük"}] }, { type: "match", text: "Sonuç:", pairs: [{q: "Dev", a: "Kandırıldı"}, {q: "Köy", a: "Kurtuldu"}] }, { type: "dnd", text: "Devi _____ kullanarak yendi.", options: ["gücünü", "aklını", "sopayı"], answer: "aklını" }, { type: "dnd", text: "Keloğlan köyün en _____ çocuğuydu.", options: ["uzun", "yaramaz", "zeki"], answer: "zeki" }] }
+                ],
+                hard: [
+                    { id: 331, icon: "fa-mountain", title: "Anadolu Efsaneleri", content: "Anadolu'da her dağın bir hikayesi vardır. Ağrı Dağı efsanesi çok meşhurdur. İnsanlar bu hikayeleri dilden dile anlatır.", questions: [{ type: "mc", text: "Neyin hikayesi varmış?", options: ["Denizin", "Her dağın", "Her ağacın"], answer: "Her dağın" }, { type: "mc", text: "Hangi dağ meşhurdur?", options: ["Erciyes", "Uludağ", "Ağrı Dağı"], answer: "Ağrı Dağı" }, { type: "mc", text: "Hikayeler nasıl yayılır?", options: ["Yazarak", "Dilden dile", "Susarak"], answer: "Dilden dile" }, { type: "match", text: "Kavramlar:", pairs: [{q: "Anadolu", a: "Yer"}, {q: "Efsane", a: "Hikaye"}] }, { type: "match", text: "Özellik:", pairs: [{q: "Ağrı Dağı", a: "Meşhur"}, {q: "Anlatım", a: "Sözlü"}] }, { type: "dnd", text: "Her dağın bir _____ vardır.", options: ["arabası", "hikayesi", "okulu"], answer: "hikayesi" }, { type: "dnd", text: "Bu hikayeleri _____ dile anlatır.", options: ["elden", "dilden", "gözden"], answer: "dilden" }] }
+                ]
+            },
+            4: { // 4. SINIF (4 Şıklı)
+                easy: [
+                    { id: 411, icon: "fa-bridge", title: "İnatçı Keçiler", content: "Bir köprünün üzerinde iki inatçı keçi karşılaştı. Köprü çok dardı. İkisi de yol vermedi. Sonunda boynuz tokuştururken ikisi de suya düştü.", questions: [{ type: "mc", text: "Keçiler nerede karşılaştı?", options: ["Tarlada", "Ahırda", "Köprüde", "Dağda"], answer: "Köprüde" }, { type: "mc", text: "Köprü nasıldı?", options: ["Geniş", "Dar", "Kırık", "Yeni"], answer: "Dar" }, { type: "mc", text: "Sonuç ne oldu?", options: ["Barıştılar", "Geri döndüler", "Suya düştüler", "Uçtular"], answer: "Suya düştüler" }, { type: "match", text: "Sebep-Sonuç:", pairs: [{q: "İnatçılık", a: "Düşmek"}, {q: "Dar Köprü", a: "Geçememek"}] }, { type: "match", text: "Zıt Anlam:", pairs: [{q: "İnatçı", a: "Uysal"}, {q: "Dar", a: "Geniş"}] }, { type: "dnd", text: "İkisi de _____ vermedi.", options: ["yol", "yemek", "su"], answer: "yol" }, { type: "dnd", text: "Sonunda ikisi de _____ düştü.", options: ["yere", "suya", "eve"], answer: "suya" }] }
+                ],
+                medium: [
+                    { id: 421, icon: "fa-sun", title: "Güneş Sistemi", content: "Güneş sistemimizde sekiz gezegen bulunur. Dünya, güneşe yakınlık bakımından üçüncü sıradadır. En büyük gezegen Jüpiter'dir.", questions: [{ type: "mc", text: "Sistemde kaç gezegen var?", options: ["Yedi", "Sekiz", "Dokuz", "On"], answer: "Sekiz" }, { type: "mc", text: "Dünya kaçıncı sıradadır?", options: ["Birinci", "İkinci", "Üçüncü", "Dördüncü"], answer: "Üçüncü" }, { type: "mc", text: "En büyük gezegen hangisidir?", options: ["Mars", "Venüs", "Satürn", "Jüpiter"], answer: "Jüpiter" }, { type: "match", text: "Gezegen Özellikleri:", pairs: [{q: "Dünya", a: "3. Sıra"}, {q: "Jüpiter", a: "En Büyük"}] }, { type: "match", text: "Kategoriler:", pairs: [{q: "Güneş", a: "Yıldız"}, {q: "Mars", a: "Gezegen"}] }, { type: "dnd", text: "Dünya güneşe yakınlıkta _____ sıradadır.", options: ["birinci", "üçüncü", "sonuncu"], answer: "üçüncü" }, { type: "dnd", text: "En büyük gezegen _____dir.", options: ["Mars", "Dünya", "Jüpiter"], answer: "Jüpiter" }] }
+                ],
+                hard: [
+                    { id: 431, icon: "fa-robot", title: "Yapay Zeka", content: "Yapay zeka, bilgisayarların insanlar gibi düşünmesini sağlayan teknolojidir. Günümüzde satranç oynayabilir, resim yapabilir ve soruları cevaplayabilir. Hayatımızı kolaylaştırır.", questions: [{ type: "mc", text: "Yapay zeka neyi sağlar?", options: ["Uçmayı", "Hızlı koşmayı", "Düşünmeyi", "Yüzmeyi"], answer: "Düşünmeyi" }, { type: "mc", text: "Metne göre yapay zeka ne yapamaz?", options: ["Satranç oynamak", "Resim yapmak", "Yemek yemek", "Soru cevaplamak"], answer: "Yemek yemek" }, { type: "mc", text: "Yapay zeka hayatımızı ne yapar?", options: ["Zorlaştırır", "Kolaylaştırır", "Bitirir", "Yavaşlatır"], answer: "Kolaylaştırır" }, { type: "match", text: "Teknoloji-İşlev:", pairs: [{q: "Bilgisayar", a: "Düşünmek"}, {q: "Yapay Zeka", a: "Teknoloji"}] }, { type: "match", text: "Eş Anlam:", pairs: [{q: "Cevap", a: "Yanıt"}, {q: "Kolay", a: "Basit"}] }, { type: "dnd", text: "Yapay zeka insan gibi _____ sağlar.", options: ["yürümeyi", "düşünmeyi", "uyumayı"], answer: "düşünmeyi" }, { type: "dnd", text: "Hayatımızı _____.", options: ["zorlaştırır", "kolaylaştırır", "durdurur"], answer: "kolaylaştırır" }] }
+                ]
+            }
+        };
+
+        // --- BİLEŞENLER ---
+
+        // Akıllı Kelime Bileşeni (Kök Bulma Özelliği İle)
+        const TooltipWord = ({ displayWord, cleanWord }) => {
+            const [show, setShow] = useState(false);
+            
+            // Sözlükte ara: Önce tam kelimeye bak, yoksa köklere bak
+            let definition = GLOBAL_DICTIONARY[cleanWord];
+            
+            if (!definition) {
+                // Basit kök bulma mantığı (kelimenin içinde geçen sözlük kelimesini bul)
+                const keys = Object.keys(GLOBAL_DICTIONARY);
+                for (let key of keys) {
+                    if (cleanWord.startsWith(key) && key.length > 2) {
+                        definition = GLOBAL_DICTIONARY[key];
+                        break;
+                    }
+                }
+            }
+
+            const hasDefinition = !!definition;
+
+            return (
+                <span 
+                    className={`relative inline-block mx-0.5 px-1 rounded transition-all duration-200 cursor-pointer text-xl leading-relaxed select-none
+                        ${hasDefinition 
+                        ? 'text-indigo-700 font-bold border-b-2 border-indigo-300 hover:bg-indigo-100' 
+                        : 'text-gray-700'}`}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (hasDefinition) setShow(!show);
+                    }}
+                >
+                    {displayWord}
+                    {show && (
+                        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-64 bg-gray-800 text-white text-sm p-4 rounded-xl shadow-xl border border-gray-600 tooltip-enter">
+                            <div className="font-bold text-yellow-400 mb-2 border-b border-gray-600 pb-1 flex items-center gap-2">
+                                <i className="fa-solid fa-book-open"></i> Sözlük
+                            </div>
+                            <p className="leading-relaxed font-medium">{definition}</p>
+                            <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-gray-800 border-r border-b border-gray-700 rotate-45"></div>
+                        </div>
+                    )}
+                </span>
+            );
+        };
+
+        const MatchGame = ({ question, onComplete }) => {
+            const [selectedLeft, setSelectedLeft] = useState(null);
+            const [matches, setMatches] = useState({});
+            const [wrong, setWrong] = useState(null);
+            const [leftItems] = useState(question.pairs.map(p => p.q));
+            const [rightItems] = useState([...question.pairs.map(p => p.a)].sort(() => Math.random() - 0.5));
+
+            const handleLeftClick = (item) => {
+                if (matches[item]) return;
+                setSelectedLeft(item);
+                setWrong(null);
+            };
+
+            const handleRightClick = (item) => {
+                if (!selectedLeft) return;
+                const correctPair = question.pairs.find(p => p.q === selectedLeft);
+                
+                if (correctPair.a === item) {
+                    const newMatches = { ...matches, [selectedLeft]: item };
+                    setMatches(newMatches);
+                    setSelectedLeft(null);
+                    if (Object.keys(newMatches).length === question.pairs.length) setTimeout(() => onComplete(true), 800);
+                } else {
+                    setWrong(item);
+                    setTimeout(() => setWrong(null), 800);
+                }
+            };
+
+            return (
+                <div className="flex flex-col gap-4 p-4 bg-indigo-50 rounded-2xl border-2 border-indigo-200">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-3">
+                            <div className="text-center text-xs font-bold text-indigo-400 uppercase">SOL</div>
+                            {leftItems.map((item, idx) => (
+                                <button key={idx} onClick={() => handleLeftClick(item)} disabled={matches[item]}
+                                    className={`p-3 rounded-xl font-bold transition-all shadow-sm text-sm md:text-base relative active:scale-95 
+                                    ${matches[item] ? 'bg-green-500 text-white border-green-600' : selectedLeft === item ? 'bg-indigo-600 text-white ring-2 ring-indigo-300' : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-300'}`}>
+                                    {item}
+                                    {matches[item] && <i className="fa-solid fa-check absolute right-2 top-1/2 -translate-y-1/2 text-white"></i>}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            <div className="text-center text-xs font-bold text-indigo-400 uppercase">SAĞ</div>
+                            {rightItems.map((item, idx) => (
+                                <button key={idx} onClick={() => handleRightClick(item)} disabled={Object.values(matches).includes(item)}
+                                    className={`p-3 rounded-xl font-bold transition-all shadow-sm text-sm md:text-base relative active:scale-95 
+                                    ${Object.values(matches).includes(item) ? 'bg-green-500 text-white border-green-600' : wrong === item ? 'bg-red-500 text-white animate-pulse' : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-purple-300'}`}>
+                                    {item}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const DragDropGame = ({ question, onComplete }) => {
+            const [selected, setSelected] = useState(null);
+            const [isCorrect, setIsCorrect] = useState(false);
+            const [error, setError] = useState(false);
+            const [part1, part2] = question.text.split('_____');
+
+            const handleSelect = (opt) => {
+                if (opt === question.answer) {
+                    setSelected(opt);
+                    setIsCorrect(true);
+                    setTimeout(() => onComplete(true), 1000);
+                } else {
+                    setError(true);
+                    setTimeout(() => setError(false), 800);
+                }
+            };
+
+            return (
+                <div className="flex flex-col items-center justify-center p-6 bg-orange-50 rounded-2xl border-2 border-orange-200">
+                    <div className="text-xl font-bold text-gray-700 mb-6 leading-loose bg-white p-6 rounded-2xl shadow-sm w-full text-center border-b-4 border-orange-100">
+                        {part1}
+                        <span className={`inline-flex items-center justify-center px-3 h-10 mx-1 border-b-4 rounded-lg font-bold transition-all align-middle text-lg 
+                            ${isCorrect ? 'bg-green-100 border-green-500 text-green-700 scale-110' : 'bg-gray-100 border-gray-300 text-transparent min-w-[80px]'}`}>
+                            {isCorrect ? selected : "?"}
+                        </span>
+                        {part2}
+                    </div>
+                    <div className="flex flex-wrap gap-3 justify-center w-full">
+                        {question.options.map((opt, idx) => (
+                            <button key={idx} onClick={() => handleSelect(opt)} disabled={isCorrect}
+                                className={`flex-1 min-w-[100px] px-4 py-3 rounded-xl font-bold text-lg shadow-sm transition-all transform active:scale-95 border-b-4 
+                                ${isCorrect && opt === selected ? 'bg-green-500 border-green-700 text-white' : error ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border-orange-200 text-orange-600 hover:bg-orange-50'}`}>
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- ANA UYGULAMA ---
+        function App() {
+            const [screen, setScreen] = useState('welcome');
+            const [grade, setGrade] = useState(1);
+            const [difficulty, setDifficulty] = useState('easy');
+            const [levelData, setLevelData] = useState([]);
+            const [qIndex, setQIndex] = useState(0);
+            const [textIndex, setTextIndex] = useState(0);
+            const [score, setScore] = useState(0);
+            const [feedback, setFeedback] = useState(null);
+
+            const startLevel = (g, d) => {
+                if (!STORIES[g] || !STORIES[g][d]) { alert("Bu seviye yapım aşamasında!"); return; }
+                setGrade(g);
+                setDifficulty(d);
+                setLevelData(STORIES[g][d]);
+                setTextIndex(0);
+                setQIndex(0);
+                setScore(0);
+                setScreen('game');
+            };
+
+            const parseContent = (content) => {
+                const words = content.split(' ');
+                return words.map((word, index) => {
+                    const cleanText = word.toLowerCase().replace(/[.,'?!":;]/g, '');
+                    return { text: word, cleanText, id: index };
+                });
+            };
+
+            const handleAnswer = (isCorrect) => {
+                if (isCorrect) {
+                    setScore(s => s + 10);
+                    setFeedback('correct');
+                    setTimeout(() => {
+                        setFeedback(null);
+                        if (qIndex < levelData[textIndex].questions.length - 1) {
+                            setQIndex(q => q + 1);
+                        } else if (textIndex < levelData.length - 1) {
+                            setTextIndex(t => t + 1);
+                            setQIndex(0);
+                        } else {
+                            setScreen('result');
+                        }
+                    }, 1200);
+                } else {
+                    setFeedback('wrong');
+                    setTimeout(() => setFeedback(null), 800);
+                }
+            };
+
+            // 1. Hoşgeldin Ekranı
+            if (screen === 'welcome') return (
+                <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                    <div className="absolute top-10 left-10 text-white/20 animate-spin-slow text-6xl"><i className="fa-solid fa-star"></i></div>
+                    <div className="absolute bottom-10 right-10 text-white/10 animate-float text-8xl"><i className="fa-solid fa-cloud"></i></div>
+                    
+                    <div className="bg-white/95 backdrop-blur-lg p-8 rounded-[3rem] shadow-2xl max-w-4xl w-full text-center z-10 border-8 border-white/30 transform hover:scale-[1.01] transition-transform">
+                        <div className="flex flex-col md:flex-row justify-center items-center gap-6 mb-8">
+                            <div className="bg-yellow-400 p-6 rounded-full shadow-lg rotate-[-6deg] text-white text-5xl">
+                                <i className="fa-solid fa-book-open"></i>
+                            </div>
+                            <div className="text-center md:text-left">
+                                <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-pink-600 tracking-tighter">ALİHOCAM</h1>
+                                <div className="text-xl font-bold text-gray-400 tracking-widest uppercase mt-2">Paragrafmatik V5</div>
+                            </div>
+                        </div>
+                        
+                        <div className="bg-gray-100 py-3 px-8 rounded-full inline-block mb-8">
+                            <span className="text-xl font-bold text-gray-600 flex items-center gap-2">
+                                <i className="fa-solid fa-gamepad text-pink-500"></i> Sınıfını Seç ve Başla!
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {[1, 2, 3, 4].map((g) => (
+                                <button key={g} onClick={() => { setGrade(g); setScreen('difficulty'); }}
+                                    className={`group relative bg-white border-4 rounded-[2rem] p-4 transition-all transform hover:-translate-y-2 hover:shadow-xl h-40 flex flex-col items-center justify-center
+                                    ${g === 1 ? 'border-green-100 hover:border-green-400' : g === 2 ? 'border-blue-100 hover:border-blue-400' : g === 3 ? 'border-purple-100 hover:border-purple-400' : 'border-red-100 hover:border-red-400'}`}>
+                                    <div className={`text-6xl font-black mb-2 ${g === 1 ? 'text-green-400' : g === 2 ? 'text-blue-400' : g === 3 ? 'text-purple-400' : 'text-red-400'}`}>{g}</div>
+                                    <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">. Sınıf</div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // 2. Zorluk Seçimi
+            if (screen === 'difficulty') return (
+                <div className="min-h-screen bg-indigo-50 flex flex-col p-4 md:p-8 justify-center items-center">
+                    <div className="max-w-md w-full">
+                        <div className="flex justify-between items-center mb-8">
+                            <button onClick={() => setScreen('welcome')} className="bg-white p-4 rounded-2xl shadow text-gray-500 hover:text-indigo-600 transition-colors"><i className="fa-solid fa-house"></i></button>
+                            <span className="text-3xl font-black text-indigo-900 bg-white px-6 py-2 rounded-full shadow-sm">{grade}. Sınıf</span>
+                        </div>
+                        
+                        <div className="flex flex-col gap-4">
+                            <button onClick={() => startLevel(grade, 'easy')} className="bg-white p-6 rounded-[2rem] shadow-lg border-l-8 border-green-400 active:scale-95 transition-all flex items-center justify-between group hover:bg-green-50">
+                                <div>
+                                    <div className="text-2xl font-black text-gray-800">Kolay</div>
+                                    <div className="text-xs font-bold text-green-600 uppercase tracking-wider">Başlangıç</div>
+                                </div>
+                                <div className="text-green-400 text-3xl group-hover:scale-110 transition-transform"><i className="fa-solid fa-star"></i></div>
+                            </button>
+
+                            <button onClick={() => startLevel(grade, 'medium')} className="bg-white p-6 rounded-[2rem] shadow-lg border-l-8 border-blue-400 active:scale-95 transition-all flex items-center justify-between group hover:bg-blue-50">
+                                <div>
+                                    <div className="text-2xl font-black text-gray-800">Orta</div>
+                                    <div className="text-xs font-bold text-blue-600 uppercase tracking-wider">Dikkatli Ol</div>
+                                </div>
+                                <div className="text-blue-400 text-3xl group-hover:scale-110 transition-transform"><i className="fa-solid fa-star-half-stroke"></i></div>
+                            </button>
+
+                            <button onClick={() => startLevel(grade, 'hard')} className="bg-white p-6 rounded-[2rem] shadow-lg border-l-8 border-red-400 active:scale-95 transition-all flex items-center justify-between group hover:bg-red-50">
+                                <div>
+                                    <div className="text-2xl font-black text-gray-800">Zor</div>
+                                    <div className="text-xs font-bold text-red-600 uppercase tracking-wider">Şampiyonlar</div>
+                                </div>
+                                <div className="text-red-400 text-3xl group-hover:scale-110 transition-transform"><i className="fa-solid fa-medal"></i></div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // 3. Oyun Ekranı
+            if (screen === 'game') {
+                const currentText = levelData[textIndex];
+                const currentQuestion = currentText.questions[qIndex];
+                const parsedWords = parseContent(currentText.content);
+                const progress = ((qIndex + 1) / currentText.questions.length) * 100;
+
+                return (
+                    <div className="min-h-screen bg-gray-50 flex flex-col max-w-xl mx-auto shadow-2xl border-x border-gray-200">
+                        {/* Üst Bar */}
+                        <div className="bg-white p-4 shadow-sm z-20 flex justify-between items-center sticky top-0">
+                            <button onClick={() => setScreen('difficulty')} className="bg-gray-100 hover:bg-gray-200 p-3 rounded-xl text-gray-500 transition-colors"><i className="fa-solid fa-rotate-left"></i></button>
+                            <div className="text-center">
+                                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">METİN {textIndex + 1} / {levelData.length}</div>
+                                <h3 className="font-black text-gray-800 text-lg leading-none">{currentText.title}</h3>
+                            </div>
+                            <div className="bg-yellow-400 text-yellow-900 px-3 py-1 rounded-xl font-black text-lg shadow-sm flex items-center gap-2">
+                                <i className="fa-solid fa-trophy"></i> {score}
+                            </div>
+                        </div>
+
+                        {/* Progress */}
+                        <div className="w-full bg-gray-200 h-2"><div className="bg-green-500 h-2 transition-all duration-500" style={{width: `${progress}%`}}></div></div>
+
+                        <div className="flex-1 overflow-y-auto p-5 pb-32 space-y-6">
+                            {/* Metin Kartı */}
+                            <div className="bg-white rounded-[2rem] p-6 shadow-lg border-4 border-white ring-1 ring-gray-100 relative">
+                                <div className="absolute -top-5 -right-5 bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-md border-4 border-white text-indigo-500">
+                                    <i className={`fa-solid ${currentText.icon}`}></i>
+                                </div>
+                                <div className="text-xl leading-[1.8] text-gray-700 font-medium pt-2">
+                                    {parsedWords.map((part, i) => (
+                                        <TooltipWord key={i} displayWord={part.text} cleanWord={part.cleanText} />
+                                    ))}
+                                </div>
+                                <div className="mt-4 pt-4 border-t-2 border-dashed border-gray-100 flex items-center justify-center gap-2 text-xs font-bold text-indigo-400">
+                                    <i className="fa-solid fa-hand-pointer"></i> <span>Kelimelere dokun, anlamını öğren!</span>
+                                </div>
+                            </div>
+
+                            {/* Soru Kartı */}
+                            <div className="bg-white rounded-[2rem] p-6 shadow-lg border-4 border-white ring-1 ring-gray-100 relative min-h-[300px]">
+                                {/* Feedback */}
+                                {feedback && (
+                                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-[2rem] bg-white/95 backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+                                        <div className={`text-6xl mb-2 ${feedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}>
+                                            <i className={`fa-solid ${feedback === 'correct' ? 'fa-circle-check' : 'fa-circle-xmark'}`}></i>
+                                        </div>
+                                        <span className={`font-black text-2xl uppercase tracking-widest ${feedback === 'correct' ? 'text-green-600' : 'text-red-600'}`}>
+                                            {feedback === 'correct' ? 'Harika!' : 'Hatalı!'}
+                                        </span>
+                                    </div>
+                                )}
+
+                                <div className="mb-6 flex justify-between items-center">
+                                    <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider text-white shadow
+                                        ${currentQuestion.type === 'mc' ? 'bg-blue-500' : currentQuestion.type === 'dnd' ? 'bg-orange-500' : 'bg-purple-500'}`}>
+                                        {currentQuestion.type === 'mc' ? 'Test' : currentQuestion.type === 'dnd' ? 'Boşluk' : 'Eşleştirme'}
+                                    </span>
+                                    <span className="text-gray-200 font-black text-4xl">{qIndex + 1}</span>
+                                </div>
+
+                                <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">{currentQuestion.text}</h3>
+
+                                {currentQuestion.type === 'mc' && (
+                                    <div className="space-y-3">
+                                        {currentQuestion.options.map((opt, i) => (
+                                            <button key={i} onClick={() => handleAnswer(opt === currentQuestion.answer)} 
+                                                className="w-full p-4 rounded-xl border-2 border-gray-100 bg-gray-50 hover:bg-indigo-50 hover:border-indigo-300 active:scale-[0.98] text-left text-lg font-bold text-gray-700 flex items-center gap-4 transition-all shadow-sm group">
+                                                <span className="w-8 h-8 rounded-lg bg-white border-2 border-gray-200 text-gray-400 flex items-center justify-center text-sm font-black group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                                                    {String.fromCharCode(65 + i)}
+                                                </span>
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                {currentQuestion.type === 'match' && <MatchGame question={currentQuestion} onComplete={() => handleAnswer(true)} />}
+                                {currentQuestion.type === 'dnd' && <DragDropGame question={currentQuestion} onComplete={() => handleAnswer(true)} />}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 4. Sonuç Ekranı
+            if (screen === 'result') return (
+                <div className="min-h-screen bg-indigo-600 flex items-center justify-center p-6 relative overflow-hidden">
+                    <div className="absolute inset-0 pointer-events-none opacity-20">
+                        <i className="fa-solid fa-star absolute top-10 left-10 text-yellow-400 text-4xl animate-spin-slow"></i>
+                        <i className="fa-solid fa-heart absolute bottom-10 right-10 text-pink-400 text-4xl animate-bounce"></i>
+                    </div>
+
+                    <div className="bg-white rounded-[3rem] p-10 w-full max-w-sm text-center shadow-2xl relative">
+                        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-yellow-400 p-6 rounded-full border-8 border-indigo-600 shadow-xl text-white text-5xl">
+                            <i className="fa-solid fa-crown"></i>
+                        </div>
+                        
+                        <div className="mt-12 mb-6">
+                            <h2 className="text-4xl font-black text-gray-800 mb-2">Tebrikler!</h2>
+                            <p className="text-gray-500 font-bold">Harika bir iş çıkardın.</p>
+                        </div>
+                        
+                        <div className="bg-gray-50 rounded-3xl p-6 mb-8 border-2 border-gray-100">
+                            <div className="text-xs text-gray-400 uppercase font-black tracking-widest mb-1">PUAN</div>
+                            <div className="text-6xl font-black text-indigo-600 tracking-tighter">{score}</div>
+                        </div>
+
+                        <button onClick={() => setScreen('difficulty')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl shadow-lg active:scale-95 transition-all mb-3 text-lg flex items-center justify-center gap-2">
+                            <i className="fa-solid fa-arrow-right"></i> Devam Et
+                        </button>
+                        <button onClick={() => setScreen('welcome')} className="w-full bg-white text-gray-400 hover:text-gray-600 font-bold py-4 rounded-xl border-2 border-gray-100 hover:bg-gray-50 transition-colors">
+                            Çıkış
+                        </button>
+                    </div>
+                </div>
+            );
+
+            return null;
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
